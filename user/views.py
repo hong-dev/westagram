@@ -1,9 +1,12 @@
-#from django.shortcuts import render 
-
 import json
-from .models      import User, Comment
+
+
+from .models import User
+
 from django.views import View
 from django.http  import HttpResponse, JsonResponse
+from django.db.models import Q
+
 
 class UserView(View):
     def post(self, request):
@@ -15,12 +18,12 @@ class UserView(View):
             password = user_data['password']
         ).save()
 
-        return JsonResponse({'message':'Thank you for signing up!'}, status=200)
+        return HttpResponse(status=200)
 
     def get(self, request):
         user_data = User.objects.all()
         users     = []
-        for user in user_data:  #하나의 객체씩 나온다.
+        for user in user_data:
             users.append({
                 'name'     : user.name,
                 'email'    : user.email,
@@ -28,39 +31,24 @@ class UserView(View):
                 'password' : user.password
             })
 
-            return JsonResponse({'users':users}, status = 200)
+        return JsonResponse({'users':users}, status = 200)
 
 
 class LoginView(View):
     def post(self, request):
-        user_login_req = json.loads(request.body)
-        user_data      = User.objects.values()
-        for index in range(len(user_data)):
-            if user_login_req['name'] in user_data[index]['name']:
-                if user_login_req['password'] == user_data[index]['password']:
-                    return JsonResponse({'message':'Welcome! '+ user_login_req['name']}, status=200)
-                else:
-                    return JsonResponse({'message':'Please check your password :)'}, status=200)
-        return JsonResponse({'message':'Please sign up first :)'}, status=200)
+        user_data = json.loads(request.body)
 
+        user_name  = user_data.get('name', None)
+        user_email = user_data.get('email', None)
+        user_phone = user_data.get('phone', None)
 
-
-class CommentView(View):
-    def post(self, request):
-        user_com_req   = json.loads(request.body)
-        user_data      = User.objects.values()
-        for index in range(len(user_data)):
-            if user_com_req['name'] in user_data[index]['name']:
-                Comment(
-                    name    = user_com_req['name'],
-                    comment = user_com_req['comment']
-                ).save()
-                return JsonResponse({'message':'comment saved!'}, status=200)
-        return JsonResponse({'message':'Please log in first :)'}, status=200)
-
-
-    def get(self, request):
-        comment_data = Comment.objects.values()
-        return JsonResponse({'comments':list(comment_data)}, status=200)
-
+        try:
+            if User.objects.filter(Q(name = user_name)|Q(email = user_email)|Q(phone=user_phone)).exists():
+                user = User.objects.filter(Q(name = user_name)|Q(email = user_email)|Q(phone=user_phone))[0]
+                if user.password == user_data['password']:
+                    return HttpResponse(status = 200)
+                return HttpResponse(status = 401)
+            return HttpResponse(status = 400)
+        except KeyError:
+            return JsonResponse({"message":"INVALID_KEYS"}, status = 400)
 
