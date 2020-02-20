@@ -1,4 +1,6 @@
 import json
+import bcrypt
+import jwt
 
 
 from .models import User
@@ -15,7 +17,7 @@ class UserView(View):
             name     = user_data['name'],
             email    = user_data['email'],
             phone    = user_data['phone'],
-            password = user_data['password']
+            password = bcrypt.hashpw(user_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         ).save()
 
         return HttpResponse(status=200)
@@ -45,8 +47,9 @@ class LoginView(View):
         try:
             if User.objects.filter(Q(name = user_name)|Q(email = user_email)|Q(phone=user_phone)).exists():
                 user = User.objects.filter(Q(name = user_name)|Q(email = user_email)|Q(phone=user_phone))[0]
-                if user.password == user_data['password']:
-                    return HttpResponse(status = 200)
+                if bcrypt.checkpw(user_data['password'].encode('utf-8'), user.password.encode('utf-8')):
+                    token = jwt.encode({'id': user.id}, 'SECRET_KEY', algorithm = 'HS256').decode('utf-8')
+                    return JsonResponse({"token":token}, status = 200)
                 return HttpResponse(status = 401)
             return HttpResponse(status = 400)
         except KeyError:
