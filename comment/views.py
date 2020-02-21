@@ -1,13 +1,17 @@
 import json
+import bcrypt
+import jwt
 
 from .models     import Comment
 from user.models import User
+from user.utils import login_required
 
 from django.views import View
 from django.http  import HttpResponse, JsonResponse
 
 
 class CommentView(View):
+    @login_required
     def post(self, request):
         user_data   = json.loads(request.body)
         try:
@@ -21,6 +25,7 @@ class CommentView(View):
         except KeyError:
             return HttpResponse(status=400)
 
+    @login_required
     def get(self, request):
         comment_data = Comment.objects.values()
         return JsonResponse({'comments':list(comment_data)}, status=200)
